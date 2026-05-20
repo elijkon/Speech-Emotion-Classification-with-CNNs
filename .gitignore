@@ -1,0 +1,36 @@
+# ========================
+# SECURITY (NEVER UPLOAD)
+# ========================
+.env
+
+# ========================
+# DATA AND DATABASES
+# ========================
+# Ignore your specific SQLite database and any future ones
+*.db
+ravdess_metadata.db
+
+# Ignore raw audio datasets and generated images
+audio_speech_actors_01-24/
+spectrograms/
+dataset/
+
+# ========================
+# PYTHON SYSTEM FILES
+# ========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# ========================
+# OS GENERATED FILES
+# ========================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
