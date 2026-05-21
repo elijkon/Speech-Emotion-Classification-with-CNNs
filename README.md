@@ -1,67 +1,76 @@
-# DeepLearning_MiniHackathon
+# End-to-End Speech Emotion Classification Pipeline
 
-![Project Banner](https://img.shields.io/badge/PyTorch-Deep%20Learning-EE4C2C) ![WandB](https://img.shields.io/badge/Weights_&_Biases-Logging-FFBE00) ![HuggingFace](https://img.shields.io/badge/HuggingFace-Dataset-yellow)
+![Python](https://img.shields.io/badge/Python-3.10-blue) ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED) ![AWS S3](https://img.shields.io/badge/AWS-S3-FF9900) ![Prefect](https://img.shields.io/badge/Prefect-Orchestration-0052FF) ![PyTorch](https://img.shields.io/badge/PyTorch-Deep_Learning-EE4C2C) ![WandB](https://img.shields.io/badge/Weights_&_Biases-Logging-FFBE00)
 
-## What is this?
-Team KEM (Kritan, Elijah, and Mayur) built this project for a Deep Learning Mini-Hackathon.
+## Overview
+This project is an end-to-end data engineering and deep learning pipeline that classifies human emotion from raw audio files. 
 
-The main idea was to figure out if a computer can tell how someone is feeling just by listening to them. Usually, people use complex audio models (like RNNs) for this, but we decided to try a Computer Vision approach instead. We turned the sound clips into pictures called **Spectrograms** and then trained a standard image classifier (CNN) to look at the picture and guess the emotion.
+Moving beyond traditional recurrent audio models, this system translates the problem into a Computer Vision task. It orchestrates a parallelized ETL pipeline to convert raw audio into Mel-spectrograms, loads the processed assets into an AWS S3 Data Lake, and trains a Convolutional Neural Network (CNN) via PyTorch to classify the emotional state of the speaker.
 
-## The Data
-We used the **RAVDESS** dataset.
+## 🏗️ Architecture & Tech Stack
 
-* **Original Audio:** We got the raw audio files from Kaggle: [RAVDESS Emotional Speech Audio](https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio?resource=download)
-* **Our Processed Data:** We converted that audio into 128x128 grayscale spectrograms and hosted them on Hugging Face here: [elijkon/DL_Spectrograms](https://huggingface.co/datasets/elijkon/DL_Spectrograms)
+This repository demonstrates proficiency across the modern data and machine learning stack:
 
-### Decoding the Filenames
-The files have long names like `03-01-06-01-02-01-12.wav`. Here is how to read them:
+* **Data Orchestration & ETL:** Prefect, Python `ProcessPoolExecutor` (Multiprocessing)
+* **Audio Processing:** Librosa
+* **Cloud Storage:** AWS S3 (via Boto3)
+* **Database / Metadata Management:** SQLite
+* **Deep Learning:** PyTorch, Torchvision
+* **Experiment Tracking:** Weights & Biases (WandB)
+* **Infrastructure:** Docker
 
-| Position | Attribute | Codes |
-| :--- | :--- | :--- |
-| 1 | Modality | 01=Full-AV, 02=Video, 03=Audio |
-| 2 | Vocal Channel | 01=Speech, 02=Song |
-| 3 | Emotion | 01=Neutral, 02=Calm, 03=Happy, 04=Sad, 05=Angry, 06=Fearful, 07=Disgust, 08=Surprised |
-| 4 | Intensity | 01=Normal, 02=Strong |
-| 5 | Statement | 01="Kids are talking...", 02="Dogs are sitting..." |
-| 6 | Repetition | 01=1st, 02=2nd |
-| 7 | Actor | 01-24 (Odd=Male, Even=Female) |
+### The Pipeline Workflow
 
-## The Model
-We built a Convolutional Neural Network (CNN) from scratch using PyTorch.
+1. **Extract:** Ingests raw `.wav` audio files from the RAVDESS dataset.
+2. **Transform (Parallelized):** Utilizes multi-core processing to efficiently extract 128x128 Mel-spectrograms from the audio signal. Metadata (emotion, intensity, actor ID, gender) is dynamically parsed from the filename nomenclature.
+3. **Load:** * Visualized spectrograms are pushed to an **AWS S3 bucket** for scalable storage.
+   * Audio metadata and S3 URIs are logged into a **SQLite relational database** for easy querying and dataset splitting.
+4. **Train:** A custom PyTorch CNN model consumes the local NVMe-synced dataset, tracked thoroughly with WandB for loss/accuracy metrics across epochs.
 
-**How it works:**
-* It has 4 convolution layers that get deeper as they go (32 -> 64 -> 128 -> 256 channels).
-* We used `Dropout(0.25)` to stop the model from memorizing the data (overfitting).
-* We used `Adam` to optimize it because it usually works the best for this kind of thing.
+## 🚀 Key Features
 
-## Tech Stack
-* **Code:** PyTorch
-* **Data:** Hugging Face
-* **Tracking:** Weights & Biases (wandb)
-* **Where we ran it:** Google Colab (using the free GPUs)
+* **Dockerized Environment:** The entire ETL pipeline is containerized using `python:3.10-slim` with necessary OS-level audio dependencies (`libsndfile1`) for seamless cross-platform execution.
+* **Concurrent Processing:** Drastically reduces data transformation time by utilizing Python's `ProcessPoolExecutor` to process audio files in parallel.
+* **Robust Orchestration:** Tasks are wrapped in **Prefect** (`@flow`, `@task`) to ensure observability, logging, and fault tolerance during the ETL process.
+* **Scalable Storage Design:** Decouples heavy image assets (AWS S3) from relational metadata (SQLite), simulating a production-grade data lake architecture.
 
-## How to Try It
-1.  **Open the Notebook:**
-    Click the badge below to open our code in Google Colab:
-    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elijkon/DeepLearning_MiniHackathon/blob/main/DL_miniHackathon.ipynb)
+## ⚙️ How to Run
 
-2.  **Add your Token:**
-    You need a Hugging Face token to download the data. Add it to the "Secrets" tab in Colab and name it `HF_TOKEN`.
+### 1. Environment Setup
+Create a `.env` file or configure your AWS credentials to allow Boto3 to authenticate with S3:
 
-3.  **Install Stuff:**
-    The notebook will automatically install the libraries you need.
+```bash
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_DEFAULT_REGION=your_region
+```
 
-4.  **Train it:**
-    Just run the training cell. It's set to run for 50 epochs.
+### 2. Run the ETL Pipeline (Docker)
+Ensure your raw audio files are located in the `audio_speech_actors_01-24/` directory.
 
-## How it Did
-We tracked the accuracy and loss in WandB. The notebook calculates the final accuracy on a test set (data the model hasn't seen before) after the last epoch.
+Build and run the container to execute the database setup and data pipeline:
 
-## What I'd Change Next Time
-If we kept working on this, here is what we would do:
-* **Mess with the data:** We would add noise or cut parts of the audio out (augmentation) to make the model smarter.
-* **Use a bigger model:** Instead of building our own, we would try fine-tuning a big pre-made model like ResNet.
-* **Combine methods:** We would try to use both the audio waves and the images together.
+```bash
+docker build -t emotion-pipeline .
+docker run --env-file .env emotion-pipeline
+```
+*This will automatically initialize the `ravdess_metadata.db` and begin processing and uploading files to S3.*
 
-## Credits & Citation
+### 3. Model Training
+Once the data is processed and synced to your local `dataset/spectrograms` directory:
+
+1. Open `DL_miniHackathon.ipynb`.
+2. Ensure you have an active GPU environment (CUDA/MPS supported).
+3. Log in to Weights & Biases when prompted.
+4. Run all cells to initialize the CNN and begin training for 50 epochs.
+
+## 📊 Model Performance
+The custom CNN features 4 convolutional layers (32 -> 64 -> 128 -> 256 channels) with a global average pooling layer and dropout regularization (0.25) to prevent overfitting. Training progression, validation accuracy, and loss metrics are automatically logged and visualized in your WandB dashboard.
+
+## 🔮 Future Enhancements
+* **Data Augmentation:** Implement dynamic time-masking or frequency-masking during the Librosa transformation to improve model generalizability.
+* **CI/CD Integration:** Add GitHub Actions to automatically lint code, build the Docker image, and run unit tests on pipeline tasks.
+* **Cloud Compute:** Migrate the PyTorch training loop to AWS SageMaker or EC2 instances to fully utilize the S3 data lake.
+
+## Dataset Credits
 "The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS)" by Livingstone & Russo is licensed under CC BY-NA-SC 4.0.
